@@ -1,0 +1,109 @@
+/* ===== Service Worker — سياق كرامات الأولياء =====
+   يخزّن هيكل التطبيق وملف البيانات والخطوط ليعمل التطبيق دون إنترنت
+   بعد أول زيارة ناجحة. */
+const CACHE = 'karamat-cache-v1.0.0';
+
+/* أصول محلية تُخزَّن مسبقاً (app shell + البيانات) */
+const CORE = [
+  './',
+  './index.html',
+  './manifest.json',
+  './data.json',
+  './icon.svg',
+  './icon-192.png',
+  './icon-512.png'
+];
+
+/* خطوط Google تحضيراً للعمل دون إنترنت */
+const CDN = [
+  'https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Aref+Ruqaa:wght@400;700&family=Cairo:wght@400;600;700;800;900&display=swap'
+];
+
+/* تخزين متحمّل مع إعادة محاولة وحدّ للتوازي */
+async function precacheAll(cache, urls, concurrency = 4) {
+  let i = 0;
+  const worker = async () => {
+    while (i < urls.length) {
+      const u = urls[i++];
+      try { await cache.add(u); }
+      catch (e) {
+        try { await new Promise((r) => setTimeout(r, 300)); await cache.add(u); } catch (_) {}
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: concurrency }, worker));
+}
+
+/* تخزين خطوط CDN بصيغة opaque (مع إعادة محاولة) */
+async function cacheCdn(cache, url) {
+  for (let t = 0; t < 3; t++) {
+    try {
+      const r = await fetch(url, { mode: 'no-cors' });
+      if (r) { await cache.put(url, r); }
+      return;
+    } catch (e) {
+      await new Promise((r) => setTimeout(r, 300));
+    }
+  }
+}
+
+self.addEventListener('install', (event) => {
+  self.skipWaiting();
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
+    await precacheAll(cache, CORE);
+    await Promise.all(CDN.map((u) => cacheCdn(cache, u)));
+  })());
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys()
+      .then((keys) => Promise.all(
+        keys.filter((k) => k !== CACHE && k.startsWith('karamat-')).map((k) => caches.delete(k))
+      ))
+      .then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
+  if (req.method !== 'GET') return;
+  const url = new URL(req.url);
+
+  /* طلبات التنقل: الشبكة أولاً مع الرجوع للنسخة المخزنة عند انقطاعها */
+  if (req.mode === 'navigate') {
+    event.respondWith(
+      fetch(req).then((res) => {
+        caches.open(CACHE).then((c) => c.put(req, res.clone()));
+        return res;
+      }).catch(() => caches.match('./index.html').then((r) => r || caches.match('./')))
+    );
+    return;
+  }
+
+  /* الأصول المحلية: المخزّن أولاً (offline-first) */
+  if (url.origin === self.location.origin) {
+    event.respondWith(
+      caches.match(req, { ignoreSearch: true }).then((cached) => {
+        if (cached) return cached;
+        return fetch(req).then((res) => {
+          if (res && res.ok) caches.open(CACHE).then((c) => c.put(req, res.clone()));
+          return res;
+        });
+      })
+    );
+    return;
+  }
+
+  /* الأصول الخارجية (الخطوط): المخزّن أولاً ثم الشبكة */
+  event.respondWith(
+    caches.match(req).then((cached) => {
+      if (cached) return cached;
+      return fetch(req).then((res) => {
+        if (res && (res.ok || res.type === 'opaque')) caches.open(CACHE).then((c) => c.put(req, res.clone()));
+        return res;
+      }).catch(() => cached);
+    })
+  );
+});

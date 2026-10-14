@@ -1,0 +1,19 @@
+{
+  "name": "سياق كرامات الأولياء — الإمام اللالكائي",
+  "short_name": "كرامات الأولياء",
+  "description": "سياق كرامات الأولياء من شرح أصول اعتقاد أهل السنة والجماعة للإمام أبي القاسم اللالكائي (ت 418 هـ): بحث فوري، تصفية بالفئة والموطن، وقراءة كاملة دون إنترنت.",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f8f6f0",
+  "theme_color": "#1b4332",
+  "categories": ["books", "education", "reference"],
+  "icons": [
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
+    { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
