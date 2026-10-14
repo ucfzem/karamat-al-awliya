@@ -98,12 +98,21 @@
         }
         .search-box { flex: 1; min-width: 240px; position: relative; }
         .search-box input {
-            width: 100%; padding: .85rem 2.8rem .85rem 1.2rem; border: 2px solid var(--border-color);
+            width: 100%; padding: .85rem 2.8rem .85rem 2.6rem; border: 2px solid var(--border-color);
             border-radius: 10px; background: var(--bg-color); color: var(--text-color);
             font-family: 'Cairo', sans-serif; font-size: 1.05rem;
         }
         .search-box input:focus { outline: none; border-color: var(--gold); }
         .search-box .search-icon { position: absolute; top: 50%; right: .85rem; transform: translateY(-50%); opacity: .5; pointer-events: none; }
+        .search-box .search-clear {
+            position: absolute; top: 50%; left: .5rem; transform: translateY(-50%);
+            border: none; background: transparent; color: var(--muted-color); cursor: pointer;
+            width: 2rem; height: 2rem; border-radius: 50%; font-size: 1.05rem; line-height: 1;
+            display: none; align-items: center; justify-content: center;
+        }
+        .search-box.has-query .search-clear { display: flex; }
+        .search-box .search-clear:hover { color: var(--primary-color); background: var(--badge-bg); }
+        mark { background: var(--gold); color: #241c05; border-radius: 3px; padding: 0 .12em; }
 
         .btn {
             background: var(--primary-color); color: #fff; border: none; padding: .8rem 1.15rem;
@@ -186,6 +195,8 @@
         [data-theme="dark"] .loading-state, [data-theme="dark"] .empty-state { color: var(--gold); }
 
         .result-count { text-align: center; font-family: 'Cairo', sans-serif; font-size: .9rem; color: var(--muted-color); margin-bottom: 1rem; }
+        .result-count.query { font-size: 1rem; font-weight: 700; color: var(--primary-color); }
+        [data-theme="dark"] .result-count.query { color: var(--gold); }
 
         /* ===== التنبيه العائم ===== */
         .toast {
@@ -222,7 +233,8 @@
         <div class="controls-panel">
             <div class="search-box">
                 <span class="search-icon">🔍</span>
-                <input type="text" id="searchInput" placeholder="ابحث بالعنوان أو النص أو اسم الراوي/الصحابي/التابعي أو رقم الأثر..." oninput="onSearch()" autocomplete="off">
+                <input type="text" id="searchInput" placeholder="ابحث بالعنوان أو النص أو اسم الراوي/الصحابي/التابعي أو رقم الأثر..." oninput="onSearch()" oncompositionend="onSearch()" onkeydown="if(event.key==='Escape'){clearSearch();}" autocomplete="off" aria-label="بحث في الآثار">
+                <button class="search-clear" id="searchClear" type="button" onclick="clearSearch()" aria-label="مسح البحث" title="مسح البحث">✕</button>
             </div>
             <div class="fontsize-ctrl" title="حجم الخط">
                 <button onclick="changeFontSize(-1)" aria-label="تصغير الخط">A−</button>
@@ -235,7 +247,7 @@
         <!-- صفوف التصفية (تُبنى تلقائياً من البيانات) -->
         <div class="filter-groups" id="filterGroups"></div>
 
-        <div class="result-count" id="resultCount"></div>
+        <div class="result-count" id="resultCount" aria-live="polite"></div>
 
         <!-- حاوية عرض الآثار -->
         <div id="entriesContainer">
@@ -393,8 +405,40 @@
 
         /* ===== البحث الفوري ===== */
         function onSearch() {
-            query = document.getElementById('searchInput').value.trim();
+            const inp = document.getElementById('searchInput');
+            query = inp.value.trim();
+            const box = inp.closest('.search-box');
+            if (box) box.classList.toggle('has-query', inp.value.length > 0);
             render();
+        }
+        function clearSearch() {
+            const inp = document.getElementById('searchInput');
+            inp.value = ''; query = '';
+            const box = inp.closest('.search-box');
+            if (box) box.classList.remove('has-query');
+            render();
+            inp.focus();
+        }
+        // إبراز الكلمة/الاسم المطابق — يتجاوز اختلاف التشكيل والهمزات
+        let _hlCache = { q: null, re: null };
+        function tolerantRegex(q) {
+            const D = '[\\u064B-\\u065F\\u0670\\u06D6-\\u06ED]*';
+            const parts = [...q].map((ch) => {
+                let e = ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                e = e.replace(/[أإآٱا]/g, '[أإآٱا]').replace(/[ىي]/g, '[ىي]').replace(/ة/g, '[ةه]').replace(/[ؤئو]/g, '[ؤئوي]');
+                return e + D;
+            });
+            return new RegExp('(' + parts.join('') + ')', 'g');
+        }
+        function highlight(text, q) {
+            const safe = esc(text);
+            if (!q) return safe;
+            if (_hlCache.q !== q) {
+                try { _hlCache.re = tolerantRegex(q); } catch (e) { _hlCache.re = null; }
+                _hlCache.q = q;
+            }
+            if (!_hlCache.re) return safe;
+            return safe.replace(_hlCache.re, '<mark>$1</mark>');
         }
 
         /* ===== اختيار المجموعة المعروضة ===== */
@@ -429,7 +473,9 @@
             container.innerHTML = '';
 
             const rc = document.getElementById('resultCount');
+            rc.className = 'result-count';
             if (showingBookmarks) rc.innerText = `المفضلة: ${list.length} أثر`;
+            else if (query) { rc.className = 'result-count query'; rc.innerText = `نتائج البحث عن «${query}»: ${list.length} أثر من ${ALL.length}`; }
             else rc.innerText = `عدد الآثار المعروضة: ${list.length} من ${ALL.length}`;
 
             if (!list.length) {
@@ -453,7 +499,7 @@
                 ? `<span class="entry-badge pending" title="يُراجَع الإسناد والتوثيق في المطبوع">بانتظار التوثيق</span>` : '';
             el.innerHTML = `
                 <div class="entry-header">
-                    <h2 class="entry-title">${esc(item.title)}</h2>
+                    <h2 class="entry-title">${highlight(item.title, query)}</h2>
                     <div class="entry-actions">
                         <button class="icon-btn ${saved ? 'saved' : ''}" title="إضافة إلى المفضلة" aria-label="مفضلة"
                             onclick="toggleBookmark(${item.id})">${saved ? '★' : '☆'}</button>
@@ -466,8 +512,8 @@
                     ${item.era ? `<span class="entry-badge">${esc(item.era)}</span>` : ''}
                     ${numBadge}${pending}
                 </div>
-                ${item.isnad ? `<div class="entry-isnad">${esc(item.isnad)}</div>` : ''}
-                <div class="entry-content">${esc(item.text)}</div>
+                ${item.isnad ? `<div class="entry-isnad">${highlight(item.isnad, query)}</div>` : ''}
+                <div class="entry-content">${highlight(item.text, query)}</div>
             `;
             return el;
         }

@@ -58,3 +58,9 @@ fonctionnement **100 % hors-ligne** après la première visite en ligne.
 - SW : `karamat-cache` `v1.0.0 → v1.1.0`.
 - Vérifié live (Playwright) : en ligne **220 cartes**, 19 puces, recherches `سارية`→2 · `النار`→6 · `230`→1, filtre `التابعون`→86 ; hors-ligne **220 cartes**, polices/favoris/icônes OK, 0 erreur.
 - Commit : `a5d2e73`.
+
+## Addendum — Correction UX de la barre de recherche
+- Diagnostic : la recherche fonctionnait (220→2 en desktop et mobile) ; défaut d'**affichage** seulement.
+- Ajout : compteur libellé « نتائج البحث عن «…»: N أثر من 220 », bouton **✕ مسح** + Échap, et **surlignage** du terme dans titre/isnâd/texte, tolérant au تشكيل et aux variantes (أ/إ/آ/ا، ى/ي، ة/ه، ؤ/ئ/و).
+- SW : `karamat-cache` `v1.1.0 → v1.1.1`.
+- Vérifié en local : `سارية`→2, `البخاري`→16, `عمر`→88, `النار`→6, `اسحاق` sans hamza→33 (avec marks). 0 erreur.
