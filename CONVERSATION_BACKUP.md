@@ -45,3 +45,16 @@ fonctionnement **100 % hors-ligne** après la première visite en ligne.
 
 ## Lien
 - Tree : https://ucfzem.github.io/works/ → **Maktaba · المكتبة** → كرامات الأولياء
+
+---
+
+# Addendum — Corpus complet (extraction verbatim)
+
+- **220 récits** extraits de **Shamela book 13150** (« كتاب كرامات الأولياء للالكائي », pages `id 1..318`), numérotation imprimée **1→230**, **92 chapitres**.
+- **Tout `verified: true`** : texte et chaînes repris **verbatim** de la source imprimée — **aucun texte/isnad fabriqué**.
+- Catégories : الصحابة 73 · التابعون 86 · أتباع التابعين 21 · القرآن والتفسير 28 · الأنبياء والأمم السابقة 12.
+- Découpe isnâd/matn automatique au dernier connecteur de chaîne (`أخبرنا/حدثنا/ثنا/أنا/قال…`) avant 70 % du texte.
+- Outils : `scrape13150.mjs` (scrape) + `build13150b.py` (build) ; `data.json` ≈ 434 Ko.
+- SW : `karamat-cache` `v1.0.0 → v1.1.0`.
+- Vérifié live (Playwright) : en ligne **220 cartes**, 19 puces, recherches `سارية`→2 · `النار`→6 · `230`→1, filtre `التابعون`→86 ; hors-ligne **220 cartes**, polices/favoris/icônes OK, 0 erreur.
+- Commit : `a5d2e73`.
